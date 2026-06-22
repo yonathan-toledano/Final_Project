@@ -1,0 +1,27 @@
+{{- if .Values.cronjob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "quakewatch.fullname" . }}-health-check
+  labels:
+    {{- include "quakewatch.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: health-check
+              image: {{ .Values.cronjob.image }}
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Checking QuakeWatch service from inside the cluster..."
+                  curl -f http://{{ include "quakewatch.fullname" . }}-service:{{ .Values.service.port }}/
+                  echo "QuakeWatch service is up and running."
+{{- end }}

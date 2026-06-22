@@ -1,0 +1,44 @@
+name: CI - Pylint and Docker Build
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies and pylint
+        working-directory: phase1/QuakeWatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+          pip install -r requirements.txt
+
+      - name: Run pylint
+        working-directory: phase1/QuakeWatch
+        run: |
+          PY_FILES=$(find . -name "*.py")
+          pylint $PY_FILES \
+            --disable=C0114,C0115,C0116,R0903,W0718,W1203,C0103 \
+            --fail-under=5.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image without pushing
+        uses: docker/build-push-action@v6
+        with:
+          context: phase1/QuakeWatch
+          push: false
+          tags: yonathantoledano/quakewatch:ci-${{ github.sha }}
