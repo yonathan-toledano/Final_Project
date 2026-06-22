@@ -67,3 +67,4 @@ argocd/quakewatch-application.yaml
 Apply:
 
 kubectl apply -f argocd/quakewatch-application.yaml
+CI retry
