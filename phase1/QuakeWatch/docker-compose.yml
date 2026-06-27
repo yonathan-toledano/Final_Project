@@ -1,0 +1,10 @@
+services:
+  quakewatch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yonathantoledano/quakewatch:phase1
+    container_name: quakewatch-phase1
+    ports:
+      - "5001:5000"
+    restart: unless-stopped

@@ -15,7 +15,7 @@ config:
   appName: QuakeWatch
   flaskEnv: production
   appPort: "5000"
-  phase: phase3-gitops-demo
+  phase: phase3
 
 secret:
   secretKey: quakewatch-phase3-secret

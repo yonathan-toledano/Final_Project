@@ -1,0 +1,13 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+.env
+logs
+*.log
+.DS_Store
+QuakeWatch-phase1.zip
