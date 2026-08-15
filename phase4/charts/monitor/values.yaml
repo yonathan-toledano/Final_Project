@@ -27,7 +27,7 @@ resources:
 env:
   appEnv: production
   tokenTtlSeconds: "86400"
-  publicBaseUrl: ""
+  publicBaseUrl: "https://finalproject.networkyonathan.com"
   appVersion: "dev"
   deployedAt: ""
 

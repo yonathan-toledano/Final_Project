@@ -104,16 +104,58 @@ def page_shell(title: str, body: str) -> str:
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>{title}</title>
   <style>
-    body {{ font-family: system-ui, Arial; margin: 16px; background: #0b1220; color: #e6eefc; direction: rtl; }}
-    a {{ color: #9cc2ff; }}
-    .card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 14px; max-width: 980px; }}
-    button {{ padding: 10px 14px; border-radius: 10px; border: 0; cursor: pointer; font-size: 16px; }}
-    .row {{ display:flex; gap: 12px; flex-wrap: wrap; align-items: center; }}
-    video {{ width: 100%; max-width: 980px; border-radius: 14px; background: #000; }}
-    code {{ background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; word-break: break-all; display:inline-block; }}
-    .muted {{ color: rgba(230,238,252,0.75); }}
+    * {{ box-sizing: border-box; }}
+    :root {{ color-scheme: dark; }}
+    body {{
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      margin: 0; min-height: 100vh; direction: rtl; color: #f7f8f8;
+      background:
+        radial-gradient(circle at 85% 0%, rgba(94,106,210,.18), transparent 34rem),
+        #08090a;
+    }}
+    .page {{ width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }}
+    .topbar {{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:34px; }}
+    .brand {{ display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.3px; }}
+    .brand-mark {{ width:11px; height:11px; border-radius:50%; background:#7170ff; box-shadow:0 0 24px rgba(113,112,255,.8); }}
+    h1, h2, h3 {{ letter-spacing:-.03em; margin-top:0; }}
+    h2 {{ font-size:clamp(28px, 5vw, 44px); margin-bottom:10px; font-weight:590; }}
+    h3 {{ font-size:20px; font-weight:590; }}
+    a {{ color: #a9afff; }}
+    .card {{
+      background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px; padding: 22px; box-shadow: 0 18px 60px rgba(0,0,0,.2);
+    }}
+    .row {{ display:flex; gap:16px; flex-wrap:wrap; align-items:stretch; }}
+    .grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }}
+    .step {{ display:flex; gap:12px; align-items:flex-start; }}
+    .step-number {{
+      width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:grid; place-items:center;
+      color:#dfe1ff; background:rgba(113,112,255,.14); border:1px solid rgba(113,112,255,.34);
+      font:500 13px ui-monospace, monospace;
+    }}
+    .btn, button {{
+      appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      min-height:44px; padding:10px 16px; border-radius:9px; border:1px solid transparent;
+      background:#5e6ad2; color:#fff; cursor:pointer; font:600 15px inherit;
+      text-decoration:none; transition:.18s ease;
+    }}
+    .btn:hover, button:hover {{ background:#7170ff; transform:translateY(-1px); }}
+    .btn.secondary {{ background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:#f7f8f8; }}
+    .btn.secondary:hover {{ background:rgba(255,255,255,.08); }}
+    .card > .btn, .card > button {{ margin-top:8px; }}
+    .url-box {{
+      display:block; width:100%; margin:12px 0; padding:11px 12px; border-radius:9px;
+      border:1px solid rgba(255,255,255,.08); background:#0f1011; color:#d0d6e0;
+      font:12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left;
+    }}
+    .qr-shell {{ width:min(260px,100%); margin:18px auto 0; padding:13px; border-radius:16px; background:#fff; }}
+    .qr-shell img {{ display:block; width:100%; max-width:none; margin:0; border-radius:6px; }}
+    video {{ width:100%; border-radius:16px; background:#000; border:1px solid rgba(255,255,255,.08); }}
+    code {{ background:rgba(255,255,255,.07); padding:3px 7px; border-radius:7px; word-break:break-all; display:inline-block; }}
+    .muted {{ color:#a6abb4; }}
     .warn {{ color: #ffd08a; }}
-    img {{ max-width: 280px; border-radius: 12px; margin-top: 6px; }}
+    img {{ max-width:280px; border-radius:12px; }}
     #status {{ font-weight: bold; }}
     .ok {{ color: #7dffb3; }}
     .err {{ color: #ff7d7d; }}
@@ -130,16 +172,32 @@ def page_shell(title: str, body: str) -> str:
       color: #7dffb3; background: rgba(125,255,179,0.08);
       font-size: 12px; vertical-align: middle;
     }}
+    .security {{ margin-top:16px; padding:12px 14px; border-radius:10px; background:rgba(255,208,138,.07); border:1px solid rgba(255,208,138,.16); font-size:14px; }}
+    @media (max-width: 720px) {{
+      .page {{ width:min(100% - 22px, 1040px); padding-top:20px; }}
+      .grid {{ grid-template-columns:1fr; }}
+      .card {{ padding:18px; }}
+      .card > .btn, .card > button {{ width:100%; }}
+      .topbar {{ margin-bottom:24px; }}
+    }}
   </style>
 </head>
 <body>
-  <h2>{title}</h2>
-  {body}
+  <main class="page">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark"></span><span>Monitor</span></div>
+      <a href="/status" class="btn secondary">מצב מערכת</a>
+    </div>
+    <h2>{title}</h2>
+    {body}
+  </main>
 </body>
 </html>"""
 
 
 def _request_base_url(request: Request) -> str:
+    if PUBLIC_BASE_URL:
+        return PUBLIC_BASE_URL.rstrip("/")
     forwarded_proto = request.headers.get("x-forwarded-proto")
     scheme = forwarded_proto or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
@@ -305,96 +363,59 @@ def room_landing(room_id: str, request: Request, token: str = Query(...)):
 
     base_host = _request_base_url(request)
     host_url = f"{base_host}/host/{room_id}?token={token}"
-
-    scheme = request.url.scheme
-    external_port = request.url.port or (443 if scheme == "https" else 80)
-
-    candidates = get_candidate_ips()
-
-    viewer_blocks = ""
-    if candidates:
-        viewer_blocks += '<p class="muted small">נסה קודם את "מומלץ". אם לא עובד, נסה את הבאים.</p>'
-        for idx, ip in enumerate(candidates):
-            label = "מומלץ" if idx == 0 else "חלופה"
-            view_url = f"{scheme}://{ip}:{external_port}/view/{room_id}?token={token}"
-            viewer_blocks += f"""
-            <div style="margin-bottom:16px;">
-              <div class="muted">{label}:</div>
-              <div><code>{view_url}</code></div>
-              <img alt="QR לנייד" src="/qr?data={quote(view_url, safe='')}" />
-            </div>
-            """
-    else:
-        viewer_blocks = '<p class="warn">לא הצלחתי לזהות כתובת רשת טובה מתוך הקונטיינר. השתמש בהדבקת IPv4 למטה.</p>'
+    viewer_url = f"{base_host}/view/{room_id}?token={token}"
 
     body = f"""
-<div class="card">
-  <p class="muted">
-    במחשב פתח Host ולחץ Start. בנייד סרוק QR.
-  </p>
+<p class="muted" style="font-size:17px; margin:0 0 24px;">
+  חיבור מאובטח בשני צעדים — בלי כתובות IP ובלי הגדרות רשת.
+</p>
 
-  <div class="row">
-    <div class="card" style="padding:12px; flex: 1; min-width: 280px;">
-      <h3>💻 מחשב (שולח)</h3>
-      <p>פתח במחשב:</p>
-      <p><a href="{host_url}"><code>{host_url}</code></a></p>
-    </div>
-
-    <div class="card" style="padding:12px; flex: 1; min-width: 280px;">
-      <h3>📱 נייד (צופה)</h3>
-
-      <div class="card" style="padding:12px; margin-bottom:12px;">
-        <div class="muted small">אם ה QR האוטומטי לא עובד, הדבק IPv4 של המחשב (מ ipconfig) ויווצר QR נכון.</div>
-        <div class="row" style="margin-top:10px;">
-          <input id="ipInput" placeholder="לדוגמה 192.168.1.23" inputmode="numeric" />
-          <button onclick="applyIp()">צור QR</button>
-        </div>
-        <div id="manualOut" style="margin-top:12px;"></div>
+<div class="grid">
+  <section class="card">
+    <div class="step">
+      <span class="step-number">1</span>
+      <div>
+        <h3>פתח את מסך השידור במחשב</h3>
+        <p class="muted">האפליקציה תבקש הרשאה למצלמה ולמיקרופון.</p>
       </div>
-
-      {viewer_blocks}
     </div>
-  </div>
+    <a class="btn" href="{host_url}">פתח מסך שידור ↗</a>
+    <button class="btn secondary" type="button" onclick="copyLink('hostLink', this)">העתק קישור למחשב ⧉</button>
+    <span id="hostLink" class="url-box">{host_url}</span>
+  </section>
 
-  <p class="warn">
-    ⚠️ שמור את הקישור בסוד. כל מי שיש לו אותו יכול לצפות בשידור.
-  </p>
+  <section class="card">
+    <div class="step">
+      <span class="step-number">2</span>
+      <div>
+        <h3>סרוק מהטלפון או מהמחשב השני</h3>
+        <p class="muted">ה־QR כבר מכיל את הקישור הנכון. אין צורך לברר IP.</p>
+      </div>
+    </div>
+    <div class="qr-shell">
+      <img alt="QR לפתיחת הצפייה" src="/qr?data={quote(viewer_url, safe='')}" />
+    </div>
+    <a class="btn secondary" href="{viewer_url}">פתח צפייה במכשיר הזה ↗</a>
+    <button class="btn secondary" type="button" onclick="copyLink('viewerLink', this)">העתק קישור לצופה ⧉</button>
+    <span id="viewerLink" class="url-box">{viewer_url}</span>
+  </section>
+</div>
+
+<div class="security small">
+  🔒 הקישור ייחודי לחדר הזה. שתף אותו רק עם מי שאמור לצפות.
 </div>
 
 <script>
-  const ROOM_ID = {room_id!r};
-  const TOKEN = {token!r};
-  const PORT = {external_port};
-  const SCHEME = {scheme!r};
-
-  function isValidIp(ip) {{
-    // בדיקת IPv4 בסיסית
-    const m = ip.match(/^\\s*(\\d{{1,3}})\\.(\\d{{1,3}})\\.(\\d{{1,3}})\\.(\\d{{1,3}})\\s*$/);
-    if (!m) return false;
-    for (let i = 1; i <= 4; i++) {{
-      const n = Number(m[i]);
-      if (Number.isNaN(n) || n < 0 || n > 255) return false;
+  async function copyLink(elementId, button) {{
+    const value = document.getElementById(elementId).textContent.trim();
+    try {{
+      await navigator.clipboard.writeText(value);
+      const original = button.textContent;
+      button.textContent = 'הקישור הועתק ✓';
+      setTimeout(() => button.textContent = original, 1800);
+    }} catch (error) {{
+      window.prompt('העתק את הקישור:', value);
     }}
-    return true;
-  }}
-
-  function applyIp() {{
-    const ip = document.getElementById('ipInput').value.trim();
-    const out = document.getElementById('manualOut');
-
-    if (!isValidIp(ip)) {{
-      out.innerHTML = '<div class="err">כתובת לא תקינה</div>';
-      return;
-    }}
-
-    const viewUrl = `${{SCHEME}}://${{ip}}:${{PORT}}/view/${{ROOM_ID}}?token=${{TOKEN}}`;
-    const qrSrc = `/qr?data=${{encodeURIComponent(viewUrl)}}`;
-
-    out.innerHTML = `
-      <div class="muted">קישור לנייד:</div>
-      <div><code>${{viewUrl}}</code></div>
-      <img alt="QR לנייד" src="${{qrSrc}}" />
-    `;
   }}
 </script>
 """
@@ -411,10 +432,10 @@ def host_page(room_id: str, request: Request, token: str = Query(...)):
     body = f"""
 <div class="card">
   <p class="muted">
-    לחץ Start, אשר מצלמה ומיקרופון. אחרי זה סרוק QR בנייד.
+    לחץ על הכפתור, אשר מצלמה ומיקרופון, והשאר את החלון פתוח.
   </p>
   <div class="row">
-    <button id="startBtn" onclick="start()">Start</button>
+    <button id="startBtn" onclick="start()">התחל שידור</button>
     <span class="muted">Room: <code>{room_id}</code></span>
     <span id="status" class="muted">ממתין</span>
   </div>
@@ -520,7 +541,7 @@ def viewer_page(room_id: str, request: Request, token: str = Query(...)):
 
     body = f"""
 <div class="card">
-  <p class="muted">ממתין לשידור. ודא שבמחשב לחצת Start.</p>
+  <p class="muted">ממתין לשידור. ודא שבמחשב לחצת על “התחל שידור”.</p>
   <div class="row">
     <span class="muted">Room: <code>{room_id}</code></span>
     <span id="status" class="muted">מתחבר</span>
