@@ -26,7 +26,7 @@ fi
 kubectl create namespace "${argocd_namespace}" --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace "${app_namespace}" --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -n "${argocd_namespace}" -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl create -n "${argocd_namespace}" -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 # Wait for ArgoCD pods to exist and become ready before applying the application object.
 until kubectl -n "${argocd_namespace}" get pods >/dev/null 2>&1; do
