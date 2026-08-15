@@ -124,6 +124,12 @@ def page_shell(title: str, body: str) -> str:
       width: 240px;
     }}
     .small {{ font-size: 13px; }}
+    .badge {{
+      display: inline-block; padding: 4px 9px; margin-inline-start: 6px;
+      border: 1px solid rgba(125,255,179,0.4); border-radius: 999px;
+      color: #7dffb3; background: rgba(125,255,179,0.08);
+      font-size: 12px; vertical-align: middle;
+    }}
   </style>
 </head>
 <body>
@@ -255,8 +261,8 @@ def status_page(request: Request):
     )
     body = f"""
 <div class="card">
-  <h3>Application status</h3>
-  <p class="muted">Real deployment data from the running container/pod.</p>
+  <h3>Phase 4 deployment dashboard <span class="badge">GitOps</span></h3>
+  <p class="muted">Live deployment data from the running Kubernetes pod.</p>
   <table style="width:100%; border-collapse:collapse;">
     <tbody>{rows}</tbody>
   </table>

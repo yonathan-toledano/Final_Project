@@ -45,7 +45,8 @@ jobs:
           python -m uvicorn monitor.monitor:app --host 127.0.0.1 --port 8000 > /tmp/monitor.log 2>&1 &
           pid=$!
           trap 'kill $pid >/dev/null 2>&1 || true' EXIT
-          for i in $(seq 1 30); do
+          for attempt in $(seq 1 30); do
+            echo "Smoke-test attempt ${attempt}/30"
             if curl -fsS http://127.0.0.1:8000/health >/dev/null && \
                curl -fsS http://127.0.0.1:8000/ready >/dev/null && \
                curl -fsS http://127.0.0.1:8000/metrics >/dev/null && \
