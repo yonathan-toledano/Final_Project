@@ -173,6 +173,7 @@ def page_shell(title: str, body: str) -> str:
       font-size: 12px; vertical-align: middle;
     }}
     .security {{ margin-top:16px; padding:12px 14px; border-radius:10px; background:rgba(255,208,138,.07); border:1px solid rgba(255,208,138,.16); font-size:14px; }}
+    .hidden {{ display:none !important; }}
     @media (max-width: 720px) {{
       .page {{ width:min(100% - 22px, 1040px); padding-top:20px; }}
       .grid {{ grid-template-columns:1fr; }}
@@ -389,7 +390,7 @@ def room_landing(room_id: str, request: Request, token: str = Query(...)):
       <span class="step-number">2</span>
       <div>
         <h3>סרוק מהטלפון או מהמחשב השני</h3>
-        <p class="muted">ה־QR כבר מכיל את הקישור הנכון. אין צורך לברר IP.</p>
+        <p class="muted">סריקה פותחת מיד את מסך הווידאו ומחברת אותו לשידור.</p>
       </div>
     </div>
     <div class="qr-shell">
@@ -491,6 +492,7 @@ async function sendOffer() {{
 }}
 
 async function start() {{
+  if (localStream) return;
   startBtn.disabled = true;
   setStatus('מבקש הרשאות', 'muted');
 
@@ -527,6 +529,13 @@ async function start() {{
     }}
   }};
 }}
+
+window.addEventListener('load', () => {{
+  start().catch(() => {{
+    setStatus('לחץ על “התחל שידור” כדי לאשר מצלמה ומיקרופון', 'warn');
+    startBtn.disabled = false;
+  }});
+}});
 </script>
 """
     return page_shell(f"{APP_TITLE} Host", body)
@@ -541,14 +550,15 @@ def viewer_page(room_id: str, request: Request, token: str = Query(...)):
 
     body = f"""
 <div class="card">
-  <p class="muted">ממתין לשידור. ודא שבמחשב לחצת על “התחל שידור”.</p>
+  <p class="muted">החיבור מתבצע אוטומטית. הווידאו יופיע מיד כשהמחשב המארח מוכן.</p>
   <div class="row">
     <span class="muted">Room: <code>{room_id}</code></span>
     <span id="status" class="muted">מתחבר</span>
+    <button id="soundBtn" class="btn secondary hidden" type="button" onclick="enableSound()">הפעל קול</button>
   </div>
 </div>
 <br/>
-<video id="remoteVideo" autoplay playsinline controls style="width:100%;max-width:100vw;"></video>
+<video id="remoteVideo" autoplay playsinline muted controls style="width:100%;max-width:100vw;"></video>
 
 <script>
 const ROOM_ID  = {room_id!r};
@@ -557,12 +567,19 @@ const ICE      = {ice_servers};
 
 const statusEl = document.getElementById('status');
 const remoteVideo = document.getElementById('remoteVideo');
+const soundBtn = document.getElementById('soundBtn');
 
 let ws, pc;
 
 function setStatus(t, cls) {{
   statusEl.textContent = t;
   statusEl.className = cls || 'muted';
+}}
+
+function enableSound() {{
+  remoteVideo.muted = false;
+  remoteVideo.play().catch(() => setStatus('לחץ Play כדי להפעיל את הווידאו', 'warn'));
+  soundBtn.classList.add('hidden');
 }}
 
 function wsUrl() {{
@@ -577,7 +594,13 @@ function makePeer() {{
   pc.ontrack = (ev) => {{
     if (remoteVideo.srcObject !== ev.streams[0]) {{
       remoteVideo.srcObject = ev.streams[0];
-      remoteVideo.play().catch(() => setStatus('לחץ Play לצפייה', 'warn'));
+      remoteVideo.muted = true;
+      remoteVideo.play()
+        .then(() => {{
+          setStatus('השידור מחובר', 'ok');
+          soundBtn.classList.remove('hidden');
+        }})
+        .catch(() => setStatus('לחץ Play לצפייה', 'warn'));
     }}
   }};
 
