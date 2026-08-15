@@ -105,22 +105,28 @@ def get_ice_servers_js() -> str:
 
 def page_shell(title: str, body: str) -> str:
     return f"""<!doctype html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>{title}</title>
   <style>
-    * {{ box-sizing: border-box; }}
+    *, *::before, *::after {{ box-sizing: border-box; }}
     :root {{ color-scheme: dark; }}
+    html, body {{ width:100%; max-width:100%; overflow-x:clip; }}
     body {{
       font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
-      margin: 0; min-height: 100vh; direction: rtl; color: #f7f8f8;
+      margin:0; min-width:0; min-height:100vh; direction:rtl; color:#f7f8f8;
+      font-size:16px; line-height:1.5;
       background:
         radial-gradient(circle at 85% 0%, rgba(94,106,210,.18), transparent 34rem),
         #08090a;
     }}
-    .page {{ width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }}
+    img, video, canvas, iframe, svg {{ max-width:100%; }}
+    .page {{
+      width:100%; max-width:1040px; margin-inline:auto;
+      padding:28px max(16px, env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }}
     .topbar {{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:34px; }}
     .brand {{ display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.3px; }}
     .brand-mark {{ width:11px; height:11px; border-radius:50%; background:#7170ff; box-shadow:0 0 24px rgba(113,112,255,.8); }}
@@ -130,10 +136,12 @@ def page_shell(title: str, body: str) -> str:
     a {{ color: #a9afff; }}
     .card {{
       background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 16px; padding: 22px; box-shadow: 0 18px 60px rgba(0,0,0,.2);
+      border-radius:16px; padding:22px; box-shadow:0 18px 60px rgba(0,0,0,.2);
+      width:100%; min-width:0;
     }}
     .row {{ display:flex; gap:16px; flex-wrap:wrap; align-items:stretch; }}
-    .grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }}
+    .grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; width:100%; min-width:0; }}
+    .grid > *, .step > div, section {{ min-width:0; }}
     .step {{ display:flex; gap:12px; align-items:flex-start; }}
     .step-number {{
       width:30px; height:30px; border-radius:9px; flex:0 0 auto; display:grid; place-items:center;
@@ -156,8 +164,8 @@ def page_shell(title: str, body: str) -> str:
       font:12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left;
     }}
-    .qr-shell {{ width:min(260px,100%); margin:18px auto 0; padding:13px; border-radius:16px; background:#fff; }}
-    .qr-shell img {{ display:block; width:100%; max-width:none; margin:0; border-radius:6px; }}
+    .qr-shell {{ width:clamp(240px, 72vw, 304px); max-width:100%; margin:18px auto 0; padding:14px; border-radius:16px; background:#fff; }}
+    .qr-shell img {{ display:block; width:100%; height:auto; aspect-ratio:1; margin:0; border-radius:6px; }}
     video {{ width:100%; border-radius:16px; background:#000; border:1px solid rgba(255,255,255,.08); }}
     code {{ background:rgba(255,255,255,.07); padding:3px 7px; border-radius:7px; word-break:break-all; display:inline-block; }}
     .muted {{ color:#a6abb4; }}
@@ -182,11 +190,17 @@ def page_shell(title: str, body: str) -> str:
     .security {{ margin-top:16px; padding:12px 14px; border-radius:10px; background:rgba(255,208,138,.07); border:1px solid rgba(255,208,138,.16); font-size:14px; }}
     .hidden {{ display:none !important; }}
     @media (max-width: 720px) {{
-      .page {{ width:min(100% - 22px, 1040px); padding-top:20px; }}
+      .page {{ padding-top:18px; padding-inline:max(12px, env(safe-area-inset-left)); }}
       .grid {{ grid-template-columns:1fr; }}
-      .card {{ padding:18px; }}
+      .card {{ padding:18px 16px; border-radius:14px; }}
       .card > .btn, .card > button {{ width:100%; }}
+      .btn, button {{ min-height:48px; font-size:16px; }}
+      .url-box {{ font-size:11px; padding:10px; }}
       .topbar {{ margin-bottom:24px; }}
+      .topbar .btn {{ width:auto; min-height:42px; font-size:14px; }}
+      h2 {{ font-size:30px; line-height:1.15; }}
+      h3 {{ font-size:19px; line-height:1.3; }}
+      .security {{ font-size:14px; line-height:1.55; }}
     }}
   </style>
 </head>
