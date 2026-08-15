@@ -58,27 +58,24 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from datetime import datetime, timezone
+          import re
 
           path = Path('phase4/charts/monitor/values.yaml')
-          lines = path.read_text().splitlines()
+          text = path.read_text()
           sha = '${{ github.sha }}'
           deployed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
-          out = []
-          i = 0
-          while i < len(lines):
-              line = lines[i]
-              stripped = line.strip()
-              out.append(line)
-              if stripped == 'tag: latest':
-                  out[-1] = f'  tag: {sha}'
-              elif stripped == 'appVersion: "dev"':
-                  out[-1] = f'  appVersion: "{sha}"'
-              elif stripped == 'deployedAt: ""':
-                  out[-1] = f'  deployedAt: "{deployed_at}"'
-              i += 1
+          replacements = {
+              r'(?m)^  tag: .+$': f'  tag: {sha}',
+              r'(?m)^  appVersion: .+$': f'  appVersion: "{sha}"',
+              r'(?m)^  deployedAt: .+$': f'  deployedAt: "{deployed_at}"',
+          }
+          for pattern, replacement in replacements.items():
+              text, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise RuntimeError(f'Expected exactly one match for {pattern!r}, got {count}')
 
-          path.write_text('\n'.join(out) + '\n')
+          path.write_text(text)
           PY
 
       - name: Commit GitOps update
