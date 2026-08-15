@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: yonathantoledano/monitor
-  tag: 4b6ab0c6b61a840ff7db2db82060d7c1dfc4a57f
+  tag: b85e1bccc7bfc3b13e065602e896933be0c38f5a
   pullPolicy: IfNotPresent
 
 service:
@@ -46,8 +46,8 @@ env:
   appEnv: production
   tokenTtlSeconds: "86400"
   publicBaseUrl: "https://finalproject.networkyonathan.com"
-  appVersion: "4b6ab0c6b61a840ff7db2db82060d7c1dfc4a57f"
-  deployedAt: "2026-08-15T09:55:04Z"
+  appVersion: "b85e1bccc7bfc3b13e065602e896933be0c38f5a"
+  deployedAt: "2026-08-15T10:08:37Z"
 
 probes:
   readiness:
