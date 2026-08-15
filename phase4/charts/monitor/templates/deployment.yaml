@@ -14,6 +14,21 @@ spec:
       labels:
 {{- include "monitor.selectorLabels" . | nindent 8 }}
     spec:
+      initContainers:
+        - name: init-token-secret
+          image: {{ .Values.tokenSecretInitImage | quote }}
+          command:
+            - sh
+            - -ec
+            - |
+              if [ ! -s /secret/token-secret ]; then
+                umask 077
+                head -c 48 /dev/urandom | base64 | tr -d '\n' > /secret/token-secret.tmp
+                mv /secret/token-secret.tmp /secret/token-secret
+              fi
+          volumeMounts:
+            - name: token-secret
+              mountPath: /secret
       containers:
         - name: monitor
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -33,6 +48,8 @@ spec:
               value: {{ .Values.env.publicBaseUrl | quote }}
             - name: TOKEN_TTL_SECONDS
               value: {{ .Values.env.tokenTtlSeconds | quote }}
+            - name: TOKEN_SECRET_FILE
+              value: /var/run/monitor-secret/token-secret
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -47,6 +64,10 @@ spec:
                   fieldPath: spec.nodeName
           resources:
 {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: token-secret
+              mountPath: /var/run/monitor-secret
+              readOnly: true
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.readiness.path }}
@@ -63,3 +84,7 @@ spec:
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+      volumes:
+        - name: token-secret
+          persistentVolumeClaim:
+            claimName: {{ include "monitor.fullname" . }}-token

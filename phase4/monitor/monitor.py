@@ -27,6 +27,13 @@ NODE_NAME = os.environ.get("NODE_NAME", "").strip()
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").strip()
 
 TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
+TOKEN_SECRET_FILE = os.environ.get("TOKEN_SECRET_FILE", "").strip()
+if not TOKEN_SECRET and TOKEN_SECRET_FILE:
+    try:
+        with open(TOKEN_SECRET_FILE, "r", encoding="utf-8") as secret_file:
+            TOKEN_SECRET = secret_file.read().strip()
+    except OSError:
+        TOKEN_SECRET = None
 if not TOKEN_SECRET:
     TOKEN_SECRET = secrets.token_urlsafe(32)
 
