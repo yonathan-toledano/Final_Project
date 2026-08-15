@@ -36,7 +36,7 @@ env:
   tokenTtlSeconds: "86400"
   publicBaseUrl: "https://finalproject.networkyonathan.com"
   appVersion: "889065022b986c639ba52bd6fe813faadfa15ad1"
-  deployedAt: "2026-08-15T09:09:40Z"
+  deployedAt: "2026-08-15T09:11:09Z"
 
 probes:
   readiness:
