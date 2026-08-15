@@ -4,9 +4,9 @@
 
 This is the final project for the DevOps Engineer course.
 
-The project uses a Python Flask application called QuakeWatch and demonstrates a full DevOps workflow.
+The project started with a Flask application called QuakeWatch for Phases 1–3, and now also includes Phase 4 work that integrates the real `monitor` application.
 
-The project includes Docker, Docker Compose, Kubernetes, Helm, GitHub Actions, ArgoCD and Docker Hub.
+The project includes Docker, Docker Compose, Kubernetes, Helm, GitHub Actions, ArgoCD, Terraform, AWS and Docker Hub.
 
 The goal is to show how an application moves from source code to a container, then to Kubernetes, then to Helm, and finally to an automated CI/CD and GitOps workflow.
 
@@ -22,16 +22,25 @@ The goal is to show how an application moves from source code to a container, th
     │   └── QuakeWatch-phase2.zip
     ├── phase3
     │   └── QuakeWatch-phase3.zip
+    ├── phase4
+    │   ├── monitor
+    │   ├── charts
+    │   ├── terraform
+    │   └── argocd
     ├── charts
     │   └── quakewatch
     ├── argocd
     │   └── quakewatch-application.yaml
     ├── docs
-    │   └── PHASE3-CICD-GITOPS.md
+    │   ├── PHASE3-CICD-GITOPS.md
+    │   ├── PHASE4-DISCOVERY.md
+    │   └── PHASE4-VALIDATION.md
     ├── .github
     │   └── workflows
     │       ├── ci.yml
-    │       └── cd.yml
+    │       ├── cd.yml
+    │       ├── phase4-monitor-ci.yml
+    │       └── phase4-monitor-cd.yml
     └── README.md
 
 ---

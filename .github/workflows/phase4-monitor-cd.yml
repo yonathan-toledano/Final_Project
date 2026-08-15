@@ -1,0 +1,86 @@
+name: phase4-monitor-cd
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "phase4/monitor/**"
+      - "phase4/charts/monitor/**"
+      - ".github/workflows/phase4-monitor-cd.yml"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: yonathantoledano/monitor
+
+jobs:
+  build-and-update-gitops:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: phase4/monitor
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Update Helm values with immutable image tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          path = Path('phase4/charts/monitor/values.yaml')
+          lines = path.read_text().splitlines()
+          sha = '${{ github.sha }}'
+          deployed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+          out = []
+          i = 0
+          while i < len(lines):
+              line = lines[i]
+              stripped = line.strip()
+              out.append(line)
+              if stripped == 'tag: latest':
+                  out[-1] = f'  tag: {sha}'
+              elif stripped == 'appVersion: "dev"':
+                  out[-1] = f'  appVersion: "{sha}"'
+              elif stripped == 'deployedAt: ""':
+                  out[-1] = f'  deployedAt: "{deployed_at}"'
+              i += 1
+
+          path.write_text('\n'.join(out) + '\n')
+          PY
+
+      - name: Commit GitOps update
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add phase4/charts/monitor/values.yaml
+          if git diff --cached --quiet; then
+            echo "No GitOps update needed"
+            exit 0
+          fi
+          git commit -m "chore(phase4): update monitor image to ${{ github.sha }} [skip ci]"
+          git push origin HEAD:main

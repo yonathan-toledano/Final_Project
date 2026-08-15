@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitor
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/yonathan-toledano/Final_Project.git
+    targetRevision: main
+    path: phase4/charts/monitor
+    helm:
+      releaseName: monitor
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitor
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

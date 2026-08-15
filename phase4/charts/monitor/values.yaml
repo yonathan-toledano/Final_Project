@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: yonathantoledano/monitor
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  appEnv: production
+  tokenTtlSeconds: "86400"
+  publicBaseUrl: ""
+  appVersion: "dev"
+  deployedAt: ""
+
+probes:
+  readiness:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
