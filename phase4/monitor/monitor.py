@@ -454,12 +454,15 @@ def host_page(room_id: str, request: Request, token: str = Query(...)):
     body = f"""
 <div class="card">
   <p class="muted">
-    לחץ על הכפתור, אשר מצלמה ומיקרופון, והשאר את החלון פתוח.
+    בדפדפן נייד נדרשת לחיצה מפורשת ואישור למצלמה ולמיקרופון. לאחר האישור, סריקת ה־QR מהמכשיר השני תחבר את הווידאו אוטומטית.
   </p>
   <div class="row">
-    <button id="startBtn" onclick="start()">התחל שידור</button>
+    <button id="startBtn" onclick="start()">אפשר מצלמה והתחל שידור</button>
     <span class="muted">Room: <code>{room_id}</code></span>
     <span id="status" class="muted">ממתין</span>
+  </div>
+  <div id="permissionHelp" class="security hidden">
+    הדפדפן חסם את הגישה. לחץ שוב על הכפתור ובחר “Allow”. אם ההרשאה נחסמה בעבר, פתח את הגדרות האתר בדפדפן ואפשר Camera ו־Microphone.
   </div>
 </div>
 <br/>
@@ -473,8 +476,11 @@ const ICE      = {ice_servers};
 const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('startBtn');
 const localVideo = document.getElementById('localVideo');
+const permissionHelp = document.getElementById('permissionHelp');
 
 let ws, pc, localStream;
+let viewerWaiting = false;
+let reconnectTimer;
 
 function setStatus(t, cls) {{
   statusEl.textContent = t;
@@ -486,14 +492,18 @@ function wsUrl() {{
   return `${{proto}}://${{location.host}}/ws/${{ROOM_ID}}?token=${{TOKEN}}`;
 }}
 
+function sendSignal(payload) {{
+  if (ws && ws.readyState === WebSocket.OPEN) {{
+    ws.send(JSON.stringify(payload));
+  }}
+}}
+
 function makePeer() {{
   if (pc) pc.close();
   pc = new RTCPeerConnection({{ iceServers: ICE }});
 
   pc.onicecandidate = (ev) => {{
-    if (ev.candidate && ws && ws.readyState === WebSocket.OPEN) {{
-      ws.send(JSON.stringify({{ type: 'candidate', candidate: ev.candidate }}));
-    }}
+    if (ev.candidate) sendSignal({{ type: 'candidate', candidate: ev.candidate }});
   }};
 
   pc.onconnectionstatechange = () => {{
@@ -505,44 +515,51 @@ function makePeer() {{
 }}
 
 async function sendOffer() {{
+  if (!localStream || !ws || ws.readyState !== WebSocket.OPEN) return;
+  viewerWaiting = false;
   makePeer();
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  ws.send(JSON.stringify({{ type: 'offer', sdp: pc.localDescription }}));
-  setStatus('נשלח offer, ממתין', 'muted');
+  sendSignal({{ type: 'offer', sdp: pc.localDescription }});
+  setStatus('הצופה נמצא — מחבר וידאו', 'muted');
 }}
 
-async function start() {{
-  if (localStream) return;
-  startBtn.disabled = true;
-  setStatus('מבקש הרשאות', 'muted');
-
-  try {{
-    localStream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
-    localVideo.srcObject = localStream;
-  }} catch (e) {{
-    setStatus('אין הרשאות מצלמה/מיקרופון', 'err');
-    startBtn.disabled = false;
-    return;
-  }}
+function connectSignal() {{
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
   ws = new WebSocket(wsUrl());
-
-  ws.onopen = () => setStatus('מחובר לשרת, ממתין לצופה', 'muted');
-  ws.onclose = () => setStatus('התנתק מהשרת', 'err');
-  ws.onerror = () => setStatus('שגיאת WS', 'err');
+  ws.onopen = async () => {{
+    clearTimeout(reconnectTimer);
+    if (localStream) {{
+      setStatus('המצלמה מוכנה — ממתין לסריקת QR', 'ok');
+      sendSignal({{ type: 'host-ready' }});
+      if (viewerWaiting) await sendOffer();
+    }} else {{
+      setStatus('לחץ על הכפתור כדי לאשר מצלמה ומיקרופון', 'warn');
+    }}
+  }};
+  ws.onclose = () => {{
+    setStatus('החיבור לשרת נותק — מתחבר מחדש', 'warn');
+    reconnectTimer = setTimeout(connectSignal, 2000);
+  }};
+  ws.onerror = () => setStatus('שגיאת חיבור לשרת', 'err');
 
   ws.onmessage = async (msg) => {{
     const data = JSON.parse(msg.data);
 
     if (data.type === 'viewer-joined') {{
-      setStatus('צופה הצטרף, יוצר חיבור', 'muted');
-      await sendOffer();
+      viewerWaiting = true;
+      if (localStream) {{
+        await sendOffer();
+      }} else {{
+        setStatus('הצופה ממתין — אשר מצלמה ומיקרופון', 'warn');
+        if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+      }}
     }}
 
-    if (data.type === 'answer') {{
+    if (data.type === 'answer' && pc) {{
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-      setStatus('משדר', 'ok');
+      setStatus('משדר לצופה', 'ok');
     }}
 
     if (data.type === 'candidate' && pc) {{
@@ -551,12 +568,36 @@ async function start() {{
   }};
 }}
 
-window.addEventListener('load', () => {{
-  start().catch(() => {{
-    setStatus('לחץ על “התחל שידור” כדי לאשר מצלמה ומיקרופון', 'warn');
+async function start() {{
+  if (localStream) {{
+    sendSignal({{ type: 'host-ready' }});
+    if (viewerWaiting) await sendOffer();
+    return;
+  }}
+
+  startBtn.disabled = true;
+  permissionHelp.classList.add('hidden');
+  setStatus('מבקש הרשאות מהדפדפן', 'muted');
+
+  try {{
+    localStream = await navigator.mediaDevices.getUserMedia({{ video: true, audio: true }});
+    localVideo.srcObject = localStream;
+  }} catch (error) {{
+    setStatus('נדרש אישור למצלמה ולמיקרופון', 'err');
+    permissionHelp.classList.remove('hidden');
     startBtn.disabled = false;
-  }});
-}});
+    return;
+  }}
+
+  startBtn.textContent = 'השידור מוכן ✓';
+  connectSignal();
+  if (ws && ws.readyState === WebSocket.OPEN) {{
+    sendSignal({{ type: 'host-ready' }});
+    if (viewerWaiting) await sendOffer();
+  }}
+}}
+
+window.addEventListener('load', connectSignal);
 </script>
 """
     return page_shell(f"{APP_TITLE} Host", body)
@@ -590,7 +631,7 @@ const statusEl = document.getElementById('status');
 const remoteVideo = document.getElementById('remoteVideo');
 const soundBtn = document.getElementById('soundBtn');
 
-let ws, pc;
+let ws, pc, announceTimer;
 
 function setStatus(t, cls) {{
   statusEl.textContent = t;
@@ -606,6 +647,12 @@ function enableSound() {{
 function wsUrl() {{
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${{proto}}://${{location.host}}/ws/${{ROOM_ID}}?token=${{TOKEN}}`;
+}}
+
+function announceViewer() {{
+  if (ws && ws.readyState === WebSocket.OPEN) {{
+    ws.send(JSON.stringify({{ type: 'viewer-joined' }}));
+  }}
 }}
 
 function makePeer() {{
@@ -642,10 +689,13 @@ function init() {{
 
   ws.onopen = () => {{
     setStatus('מחובר, מחכה לשידור', 'muted');
-    ws.send(JSON.stringify({{ type: 'viewer-joined' }}));
+    announceViewer();
+    clearInterval(announceTimer);
+    announceTimer = setInterval(announceViewer, 2000);
   }};
 
   ws.onclose = () => {{
+    clearInterval(announceTimer);
     setStatus('נותק, מנסה שוב', 'err');
     setTimeout(init, 2000);
   }};
@@ -653,7 +703,12 @@ function init() {{
   ws.onmessage = async (msg) => {{
     const data = JSON.parse(msg.data);
 
+    if (data.type === 'host-ready') {{
+      announceViewer();
+    }}
+
     if (data.type === 'offer') {{
+      clearInterval(announceTimer);
       makePeer();
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
       const answer = await pc.createAnswer();
