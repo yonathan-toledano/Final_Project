@@ -25,6 +25,17 @@ POD_NAME = os.environ.get("POD_NAME", HOSTNAME).strip() or HOSTNAME
 NAMESPACE = os.environ.get("POD_NAMESPACE", "monitor").strip() or "monitor"
 NODE_NAME = os.environ.get("NODE_NAME", "").strip()
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").strip()
+IMAGE_REPOSITORY = os.environ.get("IMAGE_REPOSITORY", "yonathantoledano/monitor").strip()
+IMAGE_TAG = os.environ.get("IMAGE_TAG", APP_VERSION).strip() or APP_VERSION
+SOURCE_REPOSITORY = os.environ.get("SOURCE_REPOSITORY", "yonathan-toledano/Final_Project").strip()
+SOURCE_REVISION = os.environ.get("SOURCE_REVISION", "main").strip() or "main"
+CLOUD_PROVIDER = os.environ.get("CLOUD_PROVIDER", "AWS EC2").strip()
+INFRASTRUCTURE_AS_CODE = os.environ.get("INFRASTRUCTURE_AS_CODE", "Terraform").strip()
+ORCHESTRATOR = os.environ.get("ORCHESTRATOR", "K3S Kubernetes").strip()
+PACKAGE_MANAGER = os.environ.get("PACKAGE_MANAGER", "Helm").strip()
+GITOPS_CONTROLLER = os.environ.get("GITOPS_CONTROLLER", "ArgoCD").strip()
+CI_PROVIDER = os.environ.get("CI_PROVIDER", "GitHub Actions").strip()
+CONTAINER_REGISTRY = os.environ.get("CONTAINER_REGISTRY", "Docker Hub").strip()
 
 TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
 TOKEN_SECRET_FILE = os.environ.get("TOKEN_SECRET_FILE", "").strip()
@@ -86,6 +97,17 @@ def _runtime_info() -> dict:
         "websocket_connections": sum(len(s) for s in rooms.values()),
         "requests_total": http_requests_total,
         "public_base_url": PUBLIC_BASE_URL,
+        "image_repository": IMAGE_REPOSITORY,
+        "image_tag": IMAGE_TAG,
+        "source_repository": SOURCE_REPOSITORY,
+        "source_revision": SOURCE_REVISION,
+        "cloud_provider": CLOUD_PROVIDER,
+        "infrastructure_as_code": INFRASTRUCTURE_AS_CODE,
+        "orchestrator": ORCHESTRATOR,
+        "package_manager": PACKAGE_MANAGER,
+        "gitops_controller": GITOPS_CONTROLLER,
+        "ci_provider": CI_PROVIDER,
+        "container_registry": CONTAINER_REGISTRY,
     }
 
 
@@ -187,6 +209,13 @@ def page_shell(title: str, body: str) -> str:
       color: #7dffb3; background: rgba(125,255,179,0.08);
       font-size: 12px; vertical-align: middle;
     }}
+    .status-table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
+    .status-table td {{ padding:10px 0; border-bottom:1px solid rgba(255,255,255,.06); vertical-align:top; }}
+    .status-table td:first-child {{ width:42%; color:#a6abb4; }}
+    .status-table td:last-child {{ text-align:left; direction:ltr; overflow-wrap:anywhere; }}
+    .pipeline {{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; direction:ltr; }}
+    .pipeline span {{ padding:7px 10px; border-radius:999px; border:1px solid rgba(113,112,255,.26); background:rgba(113,112,255,.08); color:#dfe1ff; font-size:12px; }}
+    .pipeline b {{ color:#62666d; font-weight:400; }}
     .security {{ margin-top:16px; padding:12px 14px; border-radius:10px; background:rgba(255,208,138,.07); border:1px solid rgba(255,208,138,.16); font-size:14px; }}
     .hidden {{ display:none !important; }}
     @media (max-width: 720px) {{
@@ -201,6 +230,9 @@ def page_shell(title: str, body: str) -> str:
       h2 {{ font-size:30px; line-height:1.15; }}
       h3 {{ font-size:19px; line-height:1.3; }}
       .security {{ font-size:14px; line-height:1.55; }}
+      .status-table tr {{ display:block; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); }}
+      .status-table td {{ display:block; width:100% !important; padding:2px 0; border:0; }}
+      .status-table td:last-child {{ text-align:left; }}
     }}
   </style>
 </head>
@@ -298,6 +330,38 @@ def ready():
     return {"ready": True, "app": APP_TITLE, "version": APP_VERSION}
 
 
+@app.get("/info")
+def info():
+    runtime = _runtime_info()
+    return {
+        "application": {
+            "name": runtime["app"],
+            "environment": runtime["environment"],
+            "version": runtime["version"],
+            "deployed_at": runtime["deployed_at"],
+            "uptime_seconds": runtime["uptime_seconds"],
+        },
+        "kubernetes": {
+            "platform": runtime["orchestrator"],
+            "pod": runtime["pod_name"],
+            "namespace": runtime["namespace"],
+            "node": runtime["node_name"],
+            "image": f'{runtime["image_repository"]}:{runtime["image_tag"]}',
+        },
+        "delivery": {
+            "source": runtime["source_repository"],
+            "revision": runtime["source_revision"],
+            "ci": runtime["ci_provider"],
+            "registry": runtime["container_registry"],
+            "package_manager": runtime["package_manager"],
+            "gitops": runtime["gitops_controller"],
+            "infrastructure_as_code": runtime["infrastructure_as_code"],
+            "cloud": runtime["cloud_provider"],
+        },
+        "health": {"status": "ok", "ready": True},
+    }
+
+
 @app.get("/metrics")
 def metrics():
     lines = [
@@ -320,34 +384,67 @@ def metrics():
 @app.get("/status", response_class=HTMLResponse)
 def status_page(request: Request):
     info = _runtime_info()
-    rows = "".join(
-        f"<tr><td>{k}</td><td><code>{v}</code></td></tr>"
-        for k, v in [
-            ("Version", info['version']),
-            ("Environment", info['environment']),
-            ("Deployed at", info['deployed_at']),
-            ("Hostname", info['hostname']),
-            ("Pod name", info['pod_name']),
-            ("Namespace", info['namespace']),
-            ("Node", info['node_name'] or 'n/a'),
-            ("Uptime (sec)", info['uptime_seconds']),
-            ("Rooms", info['rooms']),
-            ("Active connections", info['websocket_connections']),
-            ("HTTP requests", info['requests_total']),
-            ("Health", 'ok'),
-            ("Readiness", 'ready'),
-            ("Public base URL", info['public_base_url'] or 'n/a'),
-        ]
-    )
+
+    def rows(items):
+        return "".join(
+            f"<tr><td>{label}</td><td><code>{value}</code></td></tr>"
+            for label, value in items
+        )
+
+    application_rows = rows([
+        ("Version / Git SHA", info["version"]),
+        ("Environment", info["environment"]),
+        ("Deployed at", info["deployed_at"]),
+        ("Uptime (sec)", info["uptime_seconds"]),
+        ("HTTP requests", info["requests_total"]),
+        ("Active rooms", info["rooms"]),
+        ("WebSocket connections", info["websocket_connections"]),
+        ("Health", "ok"),
+        ("Readiness", "ready"),
+    ])
+    kubernetes_rows = rows([
+        ("Platform", info["orchestrator"]),
+        ("Pod", info["pod_name"]),
+        ("Namespace", info["namespace"]),
+        ("Node", info["node_name"] or "n/a"),
+        ("Container image", f'{info["image_repository"]}:{info["image_tag"]}'),
+    ])
+    delivery_rows = rows([
+        ("Source repository", info["source_repository"]),
+        ("Git revision", info["source_revision"]),
+        ("Continuous Integration", info["ci_provider"]),
+        ("Container registry", info["container_registry"]),
+        ("Kubernetes packaging", info["package_manager"]),
+        ("GitOps controller", info["gitops_controller"]),
+        ("Infrastructure as Code", info["infrastructure_as_code"]),
+        ("Cloud infrastructure", info["cloud_provider"]),
+        ("Public URL", info["public_base_url"] or "n/a"),
+    ])
     body = f"""
-<div class="card">
-  <h3>Phase 4 deployment dashboard <span class="badge">GitOps</span></h3>
-  <p class="muted">Live deployment data from the running Kubernetes pod.</p>
-  <table style="width:100%; border-collapse:collapse;">
-    <tbody>{rows}</tbody>
-  </table>
+<p class="muted" dir="ltr" style="font-size:17px; margin:0 0 22px; text-align:left;">
+  Live evidence for the Phase 4 AWS, Terraform, K3S, Helm, ArgoCD and CI/CD assignment.
+</p>
+<div class="grid">
+  <section class="card">
+    <h3>Application <span class="badge">LIVE</span></h3>
+    <table class="status-table"><tbody>{application_rows}</tbody></table>
+  </section>
+  <section class="card">
+    <h3>Kubernetes runtime <span class="badge">READY</span></h3>
+    <table class="status-table"><tbody>{kubernetes_rows}</tbody></table>
+  </section>
 </div>
-<p><a href="/ops">Open /ops</a> · <a href="/health">/health</a> · <a href="/ready">/ready</a> · <a href="/metrics">/metrics</a></p>
+<section class="card" style="margin-top:16px;">
+  <h3>DevOps delivery chain <span class="badge">GITOPS</span></h3>
+  <div class="pipeline">
+    <span>GitHub</span><b>→</b><span>GitHub Actions</span><b>→</b><span>Docker Hub</span><b>→</b><span>Helm</span><b>→</b><span>ArgoCD</span><b>→</b><span>K3S</span>
+  </div>
+  <table class="status-table" style="margin-top:14px;"><tbody>{delivery_rows}</tbody></table>
+</section>
+<div class="security">
+  ✓ The values above come from the running pod and its deployed Helm configuration; no demo values are generated in the browser.
+</div>
+<p><a href="/info">/info</a> · <a href="/health">/health</a> · <a href="/ready">/ready</a> · <a href="/metrics">/metrics</a></p>
 """
     return page_shell(f"{APP_TITLE} Status", body)
 

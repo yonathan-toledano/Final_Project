@@ -50,6 +50,28 @@ spec:
               value: {{ .Values.env.tokenTtlSeconds | quote }}
             - name: TOKEN_SECRET_FILE
               value: /var/run/monitor-secret/token-secret
+            - name: IMAGE_REPOSITORY
+              value: {{ .Values.image.repository | quote }}
+            - name: IMAGE_TAG
+              value: {{ .Values.image.tag | quote }}
+            - name: SOURCE_REPOSITORY
+              value: {{ .Values.delivery.sourceRepository | quote }}
+            - name: SOURCE_REVISION
+              value: {{ .Values.delivery.sourceRevision | quote }}
+            - name: CLOUD_PROVIDER
+              value: {{ .Values.delivery.cloudProvider | quote }}
+            - name: INFRASTRUCTURE_AS_CODE
+              value: {{ .Values.delivery.infrastructureAsCode | quote }}
+            - name: ORCHESTRATOR
+              value: {{ .Values.delivery.orchestrator | quote }}
+            - name: PACKAGE_MANAGER
+              value: {{ .Values.delivery.packageManager | quote }}
+            - name: GITOPS_CONTROLLER
+              value: {{ .Values.delivery.gitOpsController | quote }}
+            - name: CI_PROVIDER
+              value: {{ .Values.delivery.ciProvider | quote }}
+            - name: CONTAINER_REGISTRY
+              value: {{ .Values.delivery.containerRegistry | quote }}
             - name: POD_NAME
               valueFrom:
                 fieldRef:
