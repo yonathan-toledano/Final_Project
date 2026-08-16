@@ -1,0 +1,152 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus
+    targetRevision: 29.24.0
+    helm:
+      releaseName: prometheus
+      values: |
+        alertmanager:
+          enabled: false
+        prometheus-pushgateway:
+          enabled: false
+        server:
+          persistentVolume:
+            enabled: true
+            storageClass: local-path
+            size: 2Gi
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 700m
+              memory: 1Gi
+        kube-state-metrics:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 150m
+              memory: 192Mi
+        prometheus-node-exporter:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 150m
+              memory: 192Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: grafana
+    targetRevision: 10.5.15
+    helm:
+      releaseName: grafana
+      values: |
+        admin:
+          existingSecret: grafana-admin
+          userKey: admin-user
+          passwordKey: admin-password
+        persistence:
+          enabled: true
+          storageClassName: local-path
+          size: 1Gi
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        service:
+          type: ClusterIP
+        ingress:
+          enabled: true
+          ingressClassName: traefik
+          path: /grafana
+          pathType: Prefix
+          hosts:
+            - finalproject.networkyonathan.com
+        grafana.ini:
+          server:
+            domain: finalproject.networkyonathan.com
+            root_url: https://finalproject.networkyonathan.com/grafana/
+            serve_from_sub_path: true
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Prometheus
+                uid: prometheus
+                type: prometheus
+                access: proxy
+                url: http://prometheus-server.observability.svc.cluster.local
+                isDefault: true
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: default
+                orgId: 1
+                folder: Final Project
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+        dashboards:
+          default:
+            cloud-node-overview:
+              json: |
+                {
+                  "annotations": {"list": []},
+                  "editable": true,
+                  "panels": [
+                    {"type":"timeseries","title":"VM CPU usage (%)","datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)","refId":"A"}],"gridPos":{"h":8,"w":12,"x":0,"y":0},"fieldConfig":{"defaults":{"unit":"percent"}}},
+                    {"type":"timeseries","title":"VM memory usage (%)","datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))","refId":"A"}],"gridPos":{"h":8,"w":12,"x":12,"y":0},"fieldConfig":{"defaults":{"unit":"percent"}}},
+                    {"type":"timeseries","title":"Root disk usage (%)","datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}))","refId":"A"}],"gridPos":{"h":8,"w":12,"x":0,"y":8},"fieldConfig":{"defaults":{"unit":"percent"}}},
+                    {"type":"stat","title":"Running Kubernetes pods","datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(kube_pod_status_phase{phase=\"Running\"})","refId":"A"}],"gridPos":{"h":8,"w":12,"x":12,"y":8}},
+                    {"type":"timeseries","title":"Monitor HTTP requests / second","datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(rate(monitor_http_requests_total[5m]))","refId":"A"}],"gridPos":{"h":8,"w":24,"x":0,"y":16}}
+                  ],
+                  "schemaVersion": 41,
+                  "tags": ["aws", "k3s", "terraform", "final-project"],
+                  "templating": {"list": []},
+                  "time": {"from":"now-6h","to":"now"},
+                  "title": "Final Project · Cloud Node & Kubernetes",
+                  "uid": "final-project-cloud-node",
+                  "version": 1
+                }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

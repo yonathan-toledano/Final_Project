@@ -9,6 +9,10 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 80
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "80"
 
 ingress:
   enabled: true

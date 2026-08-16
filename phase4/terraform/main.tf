@@ -83,12 +83,27 @@ resource "aws_security_group" "k3s" {
   }
 }
 
+resource "aws_key_pair" "project_admin" {
+  key_name   = "${var.project_name}-admin"
+  public_key = file("${path.module}/keys/finalproject_monitor_admin.pub")
+
+  tags = {
+    Name      = "${var.project_name}-admin"
+    ManagedBy = "Terraform"
+  }
+}
+
 resource "aws_instance" "k3s" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
+  key_name                    = aws_key_pair.project_admin.key_name
   subnet_id                   = module.vpc.public_subnets[0]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   associate_public_ip_address = true
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
   user_data = templatefile("${path.module}/user-data.sh", {
     repository_url    = var.repository_url
     repository_branch = var.repository_branch

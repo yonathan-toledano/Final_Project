@@ -11,9 +11,9 @@ variable "project_name" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type for the K3S node"
+  description = "EC2 instance type for the K3S, ArgoCD, Prometheus and Grafana node"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "repository_url" {
