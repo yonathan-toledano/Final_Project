@@ -35,3 +35,7 @@ done
 kubectl -n "${argocd_namespace}" wait --for=condition=Ready pod --all --timeout=900s || true
 
 kubectl apply -f /opt/final-project/phase4/argocd/monitor-application.yaml
+kubectl apply -f /opt/final-project/phase4/argocd/observability-applications.yaml
+kubectl patch cm argocd-cm -n argocd --type merge -p '{"data":{"server.insecure":"true"}}' || true
+kubectl rollout restart deployment/argocd-server -n argocd || true
+kubectl apply -f /opt/final-project/phase4/argocd/argocd-ingress.yaml
