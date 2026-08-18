@@ -9,6 +9,8 @@ import socket
 from datetime import datetime, timezone
 from typing import Dict, Set
 from urllib.parse import quote
+from functools import lru_cache
+import base64
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -258,6 +260,19 @@ def _request_base_url(request: Request) -> str:
     return f"{scheme}://{host}".rstrip("/")
 
 
+@lru_cache(maxsize=512)
+def _qr_png_bytes(data: str) -> bytes:
+    import qrcode
+    buf = io.BytesIO()
+    img = qrcode.make(data)
+    img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _qr_data_uri(data: str) -> str:
+    return "data:image/png;base64," + base64.b64encode(_qr_png_bytes(data)).decode("ascii")
+
+
 def generate_token(room_id: str) -> str:
     ts = str(int(time.time()))
     msg = f"{room_id}:{ts}".encode()
@@ -456,6 +471,21 @@ def ops_page(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
+    body = """
+    <div class="card">
+      <p class="muted">אפליקציית שידור קלה ומהירה. לחץ כדי ליצור חדר חדש ולהתחיל שיתוף.</p>
+      <div class="row">
+        <a class="btn" href="/new">פתח חדר חדש</a>
+        <a class="btn secondary" href="/status">מצב מערכת</a>
+      </div>
+    </div>
+    <div class="security small">החדר נוצר רק אחרי לחיצה, כדי שהעמוד יעלה מהר יותר ובלי תקיעות מיותרות.</div>
+    """
+    return page_shell(f"{APP_TITLE}", body)
+
+
+@app.get("/new", response_class=HTMLResponse)
+def new_room(request: Request):
     room = secrets.token_urlsafe(6)
     token = generate_token(room)
     return RedirectResponse(url=f"/room/{room}?token={token}")
@@ -512,7 +542,7 @@ def room_landing(room_id: str, request: Request, token: str = Query(...)):
       </div>
     </div>
     <div class="qr-shell">
-      <img alt="QR לפתיחת הצפייה" src="/qr?data={quote(viewer_url, safe='')}" />
+      <img alt="QR לפתיחת הצפייה" src="{_qr_data_uri(viewer_url)}" />
     </div>
     <a class="btn secondary" href="{viewer_url}">פתח צפייה במכשיר הזה ↗</a>
     <button class="btn secondary" type="button" onclick="copyLink('viewerLink', this)">העתק קישור לצופה ⧉</button>
